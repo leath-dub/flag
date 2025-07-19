@@ -1,0 +1,13 @@
+.{
+    .name = .flag,
+    .version = "0.0.0",
+    .fingerprint = 0xd1f4eb9a6e276b42,
+    .minimum_zig_version = "0.14.1",
+    .dependencies = .{},
+
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+    },
+}
