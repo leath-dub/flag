@@ -17,7 +17,7 @@ pub const Command = struct {
     }
 };
 
-pub const CommandGroup = struct {
+pub const Group = struct {
     arena: std.heap.ArenaAllocator,
     name: []const u8,
     output: io.AnyWriter,
@@ -38,11 +38,11 @@ pub const CommandGroup = struct {
         output: io.AnyWriter = io.getStdErr().writer().any(),
     };
 
-    pub fn init(allocator: mem.Allocator, name: []const u8) CommandGroup {
+    pub fn init(allocator: mem.Allocator, name: []const u8) Group {
         return initWithOptions(allocator, name, .{});
     }
 
-    pub fn initWithOptions(allocator: mem.Allocator, name: []const u8, opts: Options) CommandGroup {
+    pub fn initWithOptions(allocator: mem.Allocator, name: []const u8, opts: Options) Group {
         const arena = std.heap.ArenaAllocator.init(allocator);
         return .{
             .arena = arena,
@@ -51,7 +51,7 @@ pub const CommandGroup = struct {
         };
     }
 
-    pub fn deinit(cg: CommandGroup) void {
+    pub fn deinit(cg: Group) void {
         cg.arena.deinit();
     }
 
@@ -63,7 +63,7 @@ pub const CommandGroup = struct {
     ///              level)
     /// "executed"   storing what command was executed as well as the remaining
     ///              positional arguments
-    pub fn parse(cg: *CommandGroup, args_: []const [*:0]const u8) anyerror!Result {
+    pub fn parse(cg: *Group, args_: []const [*:0]const u8) anyerror!Result {
         var args = cg.globalFlags().parse(args_) catch |e| if (e == Error.help) {
             try cg.summary();
             return .global_help;
@@ -89,21 +89,21 @@ pub const CommandGroup = struct {
     }
 
     /// Returns the command that was ran if any
-    pub fn ran(cg: CommandGroup) ?[]const u8 {
+    pub fn ran(cg: Group) ?[]const u8 {
         return cg.ran_;
     }
 
     /// Returns the positional arguments passed to `ran` command
-    pub fn vargs(cg: CommandGroup) ?[]const [*:0]const u8 {
+    pub fn vargs(cg: Group) ?[]const [*:0]const u8 {
         return cg.vargs_;
     }
 
-    pub fn globalFlags(cg: *CommandGroup) *flag.FlagSet {
+    pub fn globalFlags(cg: *Group) *flag.FlagSet {
         cg.ensureGlobal();
         return &cg.global.?;
     }
 
-    pub fn subcommand(cg: *CommandGroup, name: []const u8, usage: []const u8) mem.Allocator.Error!void {
+    pub fn subcommand(cg: *Group, name: []const u8, usage: []const u8) mem.Allocator.Error!void {
         cg.ensureCommands();
         try cg.commands_.?.append(.{
             .name = name,
@@ -119,7 +119,7 @@ pub const CommandGroup = struct {
         });
     }
 
-    pub fn lookup(cg: *CommandGroup, sc: []const u8) ?*flag.FlagSet {
+    pub fn lookup(cg: *Group, sc: []const u8) ?*flag.FlagSet {
         for (cg.commands_.?.items) |*c| {
             if (mem.eql(u8, sc, c.name)) {
                 return &c.flags;
@@ -128,7 +128,7 @@ pub const CommandGroup = struct {
         return null;
     }
 
-    pub fn summary(cg: *CommandGroup) anyerror!void {
+    pub fn summary(cg: *Group) anyerror!void {
         const flags = cg.globalFlags();
         if (flags.count() > 0) {
             try flags.usage();
@@ -155,7 +155,7 @@ pub const CommandGroup = struct {
     }
 
     /// Returns an owned copy of the commands, sorted lexicographically
-    pub fn commands(cg: *CommandGroup, allocator: mem.Allocator) mem.Allocator.Error![]*Command {
+    pub fn commands(cg: *Group, allocator: mem.Allocator) mem.Allocator.Error![]*Command {
         cg.ensureCommands();
 
         var cmds = try allocator.alloc(*Command, cg.commands_.?.items.len);
@@ -169,7 +169,7 @@ pub const CommandGroup = struct {
         return cmds;
     }
 
-    fn ensureGlobal(cg: *CommandGroup) void {
+    fn ensureGlobal(cg: *Group) void {
         if (cg.global == null) {
             cg.global = flag.FlagSet.initWithOptions(cg.arena.allocator(), cg.name, .{
                 .output = cg.output,
@@ -178,7 +178,7 @@ pub const CommandGroup = struct {
         }
     }
 
-    fn ensureCommands(cg: *CommandGroup) void {
+    fn ensureCommands(cg: *Group) void {
         if (cg.commands_ == null) {
             cg.commands_ = std.ArrayList(Command).init(cg.arena.allocator());
         }
