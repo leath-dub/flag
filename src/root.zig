@@ -7,7 +7,7 @@ pub const Custom = @import("flag.zig").Custom;
 pub const Value = @import("flag.zig").Value;
 pub const ValuePtr = @import("flag.zig").ValuePtr;
 pub const ValueType = @import("flag.zig").ValueType;
-pub const CommandGroup = @import("group.zig").CommandGroup;
+pub const Group = @import("group.zig").Group;
 pub const Command = @import("group.zig").Command;
 pub const Error = @import("error.zig").Error;
 

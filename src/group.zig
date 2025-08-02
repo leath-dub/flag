@@ -28,12 +28,6 @@ pub const Group = struct {
     ran_: ?[]const u8 = null, // the command that got ran
     vargs_: ?[]const [*:0]const u8 = null,
 
-    pub const Result = enum {
-        ran,
-        help, // help for executed command was requested
-        global_help, // global help was requested
-    };
-
     pub const Options = struct {
         output: io.AnyWriter = io.getStdErr().writer().any(),
     };
@@ -55,37 +49,27 @@ pub const Group = struct {
         cg.arena.deinit();
     }
 
-    /// Parses the arguments against the command group. The result is a tagged
-    /// union returning the tags:
-    ///
-    /// "help"       storing the optional name of the subcommand that help was
-    ///              requested on (null means it was requested at the top
-    ///              level)
-    /// "executed"   storing what command was executed as well as the remaining
-    ///              positional arguments
-    pub fn parse(cg: *Group, args_: []const [*:0]const u8) anyerror!Result {
+    pub fn parse(cg: *Group, args_: []const [*:0]const u8) anyerror!bool {
         var args = cg.globalFlags().parse(args_) catch |e| if (e == Error.help) {
             try cg.summary();
-            return .global_help;
+            return false;
         } else return e;
         if (args.len == 0) {
             try cg.summary();
             log.err("missing required subcommand", .{});
-            return Error.expected_arguments;
+            return false;
         }
 
         const sc: []const u8 = mem.span(args[0]);
         if (cg.lookup(sc)) |fs| {
             cg.ran_ = sc;
-            cg.vargs_ = fs.parse(args[1..]) catch |e| if (e == Error.help) {
-                return .help;
-            } else return e;
-            return .ran;
+            cg.vargs_ = fs.parse(args[1..]) catch return false;
+            return true;
         }
 
         // Command not found
         log.err("command provided but not defined: \"{s}\"", .{sc});
-        return Error.no_such_command;
+        return false;
     }
 
     /// Returns the command that was ran if any
@@ -144,11 +128,7 @@ pub const Group = struct {
         defer cg.arena.allocator().free(cmds);
 
         for (cmds) |c| {
-            if (mem.containsAtLeastScalar(u8, c.usage, 1, '\n')) {
-                try cg.output.print("  {s}\n    \t", .{c.name});
-            } else {
-                try cg.output.print("  {s}\t", .{c.name});
-            }
+            try cg.output.print("  {s}\n    \t", .{c.name});
             try txt.writeReplace(cg.output, c.usage, '\n', "\n    \t");
             try cg.output.writeByte('\n');
         }
