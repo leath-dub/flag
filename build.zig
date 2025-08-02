@@ -29,8 +29,10 @@ pub fn build(b: *std.Build) !void {
 
     const examples_step = b.step("examples", "Check examples");
 
+    const examples_path = try std.fs.path.join(b.allocator, &.{ b.build_root.path.?, "examples" });
+
     // Check all files in examples/ directory
-    const examples_dir = try std.fs.cwd().openDir("examples", .{ .iterate = true });
+    const examples_dir = try std.fs.openDirAbsolute(examples_path, .{ .iterate = true });
 
     var it = examples_dir.iterate();
     while (try it.next()) |entr| {
